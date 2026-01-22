@@ -1,0 +1,37 @@
+# --- Java / Maven ---
+target/
+*.class
+*.log
+logs/
+
+# --- IntelliJ / VSCode ---
+.idea/
+*.iml
+out/
+.vscode/
+
+# --- OS ---
+.DS_Store
+
+# --- Spring Boot local config (only local) ---
+application-local.yml
+application-local.yaml
+
+# --- Node ---
+node_modules/
+dist/
+
+# --- Env ---
+.env
+.env.local
+.env.*.local
+
+# --- Redis ---
+dump.rdb
+
+# --- Uploads (if generated) ---
+uploads/
+imgs/
+images/
+static/uploads/
+static/imgs/
