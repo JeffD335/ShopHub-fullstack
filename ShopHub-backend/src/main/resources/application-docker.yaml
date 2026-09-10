@@ -5,7 +5,7 @@ spring:
     name: shophub
   datasource:
     driver-class-name: com.mysql.jdbc.Driver
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/ShopHub?useSSL=false&serverTimezone=UTC}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/ShopHub?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:shophub_dev_password}
   redis:

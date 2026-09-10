@@ -142,6 +142,8 @@ mvn spring-boot:run
 
 Recommended backend JDK: 17. The backend still targets Java 8 bytecode for compatibility, so JDK 24 may print `source value 8 is obsolete` warnings in IDE builds. Those warnings are not build failures.
 
+The default local JDBC URL includes `allowPublicKeyRetrieval=true` so the demo can connect to local MySQL 8 instances that use `caching_sha2_password`. Use a stronger SSL-backed configuration for production.
+
 Run the frontend:
 
 ```bash
