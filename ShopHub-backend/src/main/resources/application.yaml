@@ -1,0 +1,30 @@
+server:
+  port: 8081
+spring:
+  application:
+    name: shophub
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/ShopHub?useSSL=false&serverTimezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:douzi123}
+  redis:
+    host: ${SPRING_REDIS_HOST:localhost}
+    port: ${SPRING_REDIS_PORT:6379}
+
+    lettuce:
+      pool:
+        max-active: 10
+        max-idle: 10
+        min-idle: 1
+        time-between-eviction-runs: 10s
+  jackson:
+    default-property-inclusion: non_null # Ignore non-null fields when processing JSON
+mybatis-plus:
+  type-aliases-package: com.shopHub.entity # Type alias scan package
+logging:
+  level:
+    com.shopHub: debug
+app:
+  upload:
+    dir: ${APP_UPLOAD_DIR:./uploads/imgs/}

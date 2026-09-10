@@ -1,0 +1,70 @@
+services:
+  # MySQL database
+  mysql:
+    image: mysql:5.7
+    container_name: shophub-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-shophub_dev_password}
+      MYSQL_DATABASE: ShopHub
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./ShopHub-backend/src/main/resources/db/hmdp.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    networks:
+      - shophub-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis cache
+  redis:
+    image: redis:5-alpine
+    container_name: shophub-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - shophub-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Spring Boot backend API
+  backend:
+    build:
+      context: ./ShopHub-backend
+      dockerfile: Dockerfile
+    container_name: shophub-backend
+    environment:
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-shophub_dev_password}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      APP_UPLOAD_DIR: /app/uploads/imgs/
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - shophub-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  shophub-network:
+    driver: bridge
