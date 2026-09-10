@@ -1,25 +1,27 @@
-# ShopHub Backend
+# ShopHub Full Stack
 
-ShopHub is a Spring Boot backend for a local deals and reviews platform. It focuses on Redis-backed authentication, cache-aside shop lookup, geo search, social feeds, and high-concurrency flash-sale voucher ordering.
+ShopHub is a full-stack local deals and reviews platform inspired by apps such as Yelp and Dianping. It demonstrates a React frontend backed by a Spring Boot API with Redis-powered authentication, caching, geo search, social feeds, and high-concurrency flash-sale ordering.
 
-This repository currently focuses on the backend system. Frontend and Nginx static assets are intentionally kept out of scope for this backend-focused version.
+## What It Shows
 
-## Why This Project Exists
-
-The project is designed to demonstrate backend system design trade-offs that commonly appear in marketplace, coupon, and local-services products:
-
-- Token-based login with Redis session storage
-- Cache-aside reads with cache penetration protection
+- Mobile-first React experience for browsing shops, reviews, follows, comments, check-ins, and vouchers
+- Token login with Redis-backed session storage
+- Cache-aside shop reads with cache-penetration protection
 - Redis GEO queries for nearby shops
 - Follow relationships and feed timelines
-- Flash-sale voucher ordering with Lua, Redis Streams, distributed locks, and database constraints
+- Flash-sale voucher ordering with Lua, Redis Streams, Redisson locks, and MySQL constraints
+- Docker Compose setup for the frontend, backend, MySQL, and Redis
 
 ## Architecture
 
 ```text
-Client
+Browser
   |
-  | HTTP / JSON
+  | React + Vite build served by Nginx
+  v
+Frontend container
+  |
+  | /api/* reverse proxy
   v
 Spring Boot API
   |
@@ -29,7 +31,7 @@ Spring Boot API
               likes, social feeds, flash-sale stock, order stream
 ```
 
-The backend uses a conventional layered structure:
+The backend follows a conventional layered structure:
 
 ```text
 controller -> service -> mapper -> MySQL
@@ -37,7 +39,30 @@ controller -> service -> mapper -> MySQL
                     +-> Redis
 ```
 
+## Project Structure
+
+```text
+ShopHub-fullstack
++-- ShopHub-frontend/     React + Vite + TypeScript app
++-- ShopHub-backend/      Spring Boot backend API
++-- docker-compose.yml    Full local runtime
++-- start.sh              Local Docker startup helper
+`-- stop.sh               Local Docker shutdown helper
+```
+
 ## Tech Stack
+
+### Frontend
+
+- React
+- TypeScript
+- Vite
+- React Router
+- Axios
+- Lucide React
+- Nginx container for production serving and API proxying
+
+### Backend
 
 - Java 8
 - Spring Boot 2.3
@@ -48,58 +73,28 @@ controller -> service -> mapper -> MySQL
 - Redis Lua scripts
 - Redis Streams
 - JUnit 5 and Mockito
-- Docker Compose
 
-## Main Modules
+## Main User Flows
 
 ### Authentication
 
-Users request a verification code with a phone number. The code is stored in Redis with a short TTL. After login, the API returns a random token and stores a compact user session in Redis. Interceptors refresh token TTLs and protect authenticated routes.
+Users request a verification code with a phone number. The code is stored in Redis with a short TTL. In local demo mode, the code is written to the backend log instead of being sent through a real SMS provider. After login, the frontend stores the returned token and sends it through the `authorization` header.
 
-### Shop Querying
+### Shop Discovery
 
-Shop details use cache-aside reads. Empty values are cached briefly to reduce cache penetration. Shop category and nearby-shop queries use Redis data structures to reduce repeated database reads.
+The frontend supports category browsing, keyword search, merchant detail pages, and a sample nearby-shop view that calls the backend Redis GEO query path.
 
-### Flash-Sale Voucher Ordering
+### Vouchers and Flash Sales
 
-The flash-sale flow is optimized for concurrent requests:
+Shop detail pages show voucher data from the backend. Flash-sale voucher claims call the Redis Lua admission-control flow, enqueue accepted requests into Redis Streams, and persist orders asynchronously in MySQL.
 
-```text
-POST /voucher-order/seckill/{voucherId}
-  -> execute Redis Lua script
-  -> atomically check stock and duplicate purchase
-  -> decrement Redis stock
-  -> append order request to Redis Stream
-  -> async consumer persists the order in MySQL
-  -> database unique index prevents duplicate user-voucher orders
-```
+### Social Reviews
 
-The database remains the final source of truth. Redis handles fast admission control; MySQL constraints provide the last line of defense.
+Users can view hot posts, open post details, like posts, inspect recent likes, comment, publish new review posts, and follow other users.
 
-### Social Feed
+### Profile
 
-Users can follow other users. When a user publishes a blog post, the post id is pushed into each follower's Redis sorted-set inbox. Feed reads use scroll pagination based on timestamp scores.
-
-### Blog Comments
-
-The backend exposes a minimal comment API for creating comments and listing comments for a blog post. Comment counts are maintained on the blog row.
-
-## Database
-
-The schema lives in:
-
-```text
-ShopHub-backend/src/main/resources/db/hmdp.sql
-```
-
-The seed data is intentionally preserved as localized sample content. The code, configuration, and project documentation describe the backend design in English.
-
-Important constraints and indexes include:
-
-- `tb_user.phone` unique index
-- `tb_follow(user_id, follow_user_id)` unique index
-- `tb_voucher_order(user_id, voucher_id)` unique index
-- query indexes for shop type, vouchers by shop/status, blogs, and comments
+The profile page shows the signed-in user, daily check-in status, check-in streak, and the user's own review posts.
 
 ## Running Locally
 
@@ -111,17 +106,18 @@ From the repository root:
 docker compose up --build
 ```
 
+Then open:
+
+```text
+Frontend:    http://localhost:8080
+Backend API: http://localhost:8081
+```
+
 If your environment still uses the old Compose binary:
 
 ```bash
 docker-compose up --build
 ```
-
-Services:
-
-- Backend API: `http://localhost:8081`
-- MySQL: `localhost:3306`
-- Redis: `localhost:6379`
 
 Optional environment variables:
 
@@ -129,27 +125,32 @@ Optional environment variables:
 MYSQL_ROOT_PASSWORD=your_password
 ```
 
-### Option 2: Local JVM
+### Option 2: Local Development
 
-Start MySQL and Redis, initialize MySQL with `hmdp.sql`, then run:
+Start MySQL and Redis, initialize MySQL with:
+
+```text
+ShopHub-backend/src/main/resources/db/hmdp.sql
+```
+
+Run the backend:
 
 ```bash
 cd ShopHub-backend
 mvn spring-boot:run
 ```
 
-Local configuration can be overridden with:
+Run the frontend:
 
 ```bash
-SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/ShopHub?useSSL=false
-SPRING_DATASOURCE_USERNAME=root
-SPRING_DATASOURCE_PASSWORD=your_password
-SPRING_REDIS_HOST=localhost
-SPRING_REDIS_PORT=6379
-APP_UPLOAD_DIR=./uploads/imgs/
+cd ShopHub-frontend
+npm install
+npm run dev
 ```
 
-## API Examples
+The Vite dev server proxies `/api/*` requests to `http://localhost:8081`.
+
+## Demo Login
 
 Request a login code:
 
@@ -157,9 +158,7 @@ Request a login code:
 curl -X POST "http://localhost:8081/user/code?phone=13686869696"
 ```
 
-In local development, the verification code is written to the backend log instead of being sent through a real SMS provider.
-
-Login:
+Read the verification code from the backend log, then sign in through the frontend or call:
 
 ```bash
 curl -X POST "http://localhost:8081/user/login" \
@@ -174,42 +173,22 @@ curl "http://localhost:8081/user/me" \
   -H "authorization: <token>"
 ```
 
-Query shops by type:
+## Database
 
-```bash
-curl "http://localhost:8081/shop/of/type?typeId=1&current=1" \
-  -H "authorization: <token>"
+The schema and seed data live in:
+
+```text
+ShopHub-backend/src/main/resources/db/hmdp.sql
 ```
 
-Create a flash-sale voucher order:
+The seed data is intentionally preserved as localized sample content. The frontend adds English labels and summaries around the main demo flows so the project is understandable to international reviewers.
 
-```bash
-curl -X POST "http://localhost:8081/voucher-order/seckill/1" \
-  -H "authorization: <token>"
-```
+Important constraints and indexes include:
 
-Follow a user:
-
-```bash
-curl -X PUT "http://localhost:8081/follow/2/true" \
-  -H "authorization: <token>"
-```
-
-Like a blog:
-
-```bash
-curl -X PUT "http://localhost:8081/blog/like/4" \
-  -H "authorization: <token>"
-```
-
-Create a blog comment:
-
-```bash
-curl -X POST "http://localhost:8081/blog-comments" \
-  -H "authorization: <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"blogId":4,"content":"Great recommendation."}'
-```
+- `tb_user.phone` unique index
+- `tb_follow(user_id, follow_user_id)` unique index
+- `tb_voucher_order(user_id, voucher_id)` unique index
+- query indexes for shop type, vouchers by shop/status, blogs, and comments
 
 ## Testing
 
@@ -220,34 +199,34 @@ cd ShopHub-backend
 mvn clean test
 ```
 
-Current test coverage includes:
+Run frontend checks:
+
+```bash
+cd ShopHub-frontend
+npm run build
+```
+
+Current backend test coverage includes:
 
 - phone number and verification-code validation
 - cache key-prefix behavior
 - Redis lock owner-token behavior
 - flash-sale Lua script contract checks
 
-Recommended next tests:
-
-- login and interceptor behavior with MockMvc
-- Redis Stream order consumption
-- duplicate-order protection
-- cache penetration and cache rebuild behavior
-
 ## Trade-Offs
 
-- Redis is used for fast admission control during flash sales, but MySQL remains the final source of truth.
-- Redis Streams provide lightweight async order processing without introducing an external message broker.
-- The current project does not implement real payment processing, production SMS delivery, or production-grade permission roles.
-- Frontend and Nginx static assets are intentionally not included in this backend-focused version.
+- Redis is used for fast admission control during flash sales, while MySQL remains the final source of truth.
+- Redis Streams provide lightweight async order processing without introducing a separate message broker.
+- The frontend is intentionally product-focused rather than a generic admin dashboard.
+- The project does not implement real payment processing, production SMS delivery, or production-grade permission roles.
 
 ## Roadmap
 
 - Add Testcontainers-based MySQL and Redis integration tests
 - Add OpenAPI documentation
-- Add CI for build and tests
+- Add GitHub Actions for backend tests and frontend builds
 - Add rate limiting for verification-code requests
-- Add a small backend-focused architecture diagram image
+- Replace localized seed content with a fully English demo dataset
 
 ## License
 

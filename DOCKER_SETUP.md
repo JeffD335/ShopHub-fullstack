@@ -16,9 +16,12 @@ docker-compose up --build
 
 ## Services
 
+- Frontend app: `http://localhost:8080`
 - Backend API: `http://localhost:8081`
 - MySQL: `localhost:3306`
 - Redis: `localhost:6379`
+
+The frontend container serves the React build and proxies `/api/*` requests to the backend container.
 
 The backend runs with the `docker` Spring profile. In that profile, MySQL is reached through the Compose service name `mysql`, and Redis is reached through the service name `redis`.
 

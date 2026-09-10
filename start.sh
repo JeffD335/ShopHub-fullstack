@@ -17,11 +17,11 @@ if ! docker info > /dev/null 2>&1; then
     exit 1
 fi
 
-echo "Building backend image..."
-compose build backend
+echo "Building images..."
+compose build
 
 echo "Starting services..."
-compose up -d mysql redis backend
+compose up -d
 
 echo "Waiting for services..."
 sleep 10
@@ -31,6 +31,7 @@ compose ps
 
 echo ""
 echo "ShopHub is running."
+echo "Frontend: http://localhost:8080"
 echo "Backend API: http://localhost:8081"
 echo ""
 echo "View logs: docker compose logs -f"
