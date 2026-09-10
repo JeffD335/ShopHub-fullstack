@@ -140,6 +140,8 @@ cd ShopHub-backend
 mvn spring-boot:run
 ```
 
+Recommended backend JDK: 17. The backend still targets Java 8 bytecode for compatibility, so JDK 24 may print `source value 8 is obsolete` warnings in IDE builds. Those warnings are not build failures.
+
 Run the frontend:
 
 ```bash
