@@ -23,6 +23,7 @@ node_modules/
 dist/
 ShopHub-frontend/node_modules/
 ShopHub-frontend/dist/
+ShopHub-frontend/.vite/
 
 # --- Env ---
 .env
