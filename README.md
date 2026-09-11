@@ -154,6 +154,22 @@ npm run dev
 
 The Vite dev server proxies `/api/*` requests to `http://localhost:8081`.
 
+## Free Cloud Deployment
+
+For a no-cost interview demo, the recommended path is a free-tier VPS running Docker Compose. See:
+
+```text
+DEPLOY_FREE.md
+```
+
+The deployment compose file is:
+
+```bash
+docker compose -f docker-compose.free.yml up -d --build
+```
+
+It publishes only the frontend entry point and keeps MySQL and Redis private inside the Docker network.
+
 ## Demo Login
 
 Request a login code:
