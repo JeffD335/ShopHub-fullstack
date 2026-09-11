@@ -59,6 +59,20 @@ services:
       - shophub-network
     restart: unless-stopped
 
+  # React frontend
+  frontend:
+    build:
+      context: ./ShopHub-frontend
+      dockerfile: Dockerfile
+    container_name: shophub-frontend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+    networks:
+      - shophub-network
+    restart: unless-stopped
+
 volumes:
   mysql_data:
     driver: local

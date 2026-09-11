@@ -57,17 +57,35 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 
 
-    private static final ExecutorService SECKILL_ORDER_EXECUTOR = Executors.newSingleThreadExecutor();
+    private final ExecutorService seckillOrderExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread thread = new Thread(r, "voucher-order-consumer");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private volatile boolean running = false;
+    private Future<?> orderHandlerTask;
 
     @PostConstruct
     public void init() {
         createConsumerGroupIfNecessary();
-        SECKILL_ORDER_EXECUTOR.submit(new VoucherOrderHandler());
+        running = true;
+        orderHandlerTask = seckillOrderExecutor.submit(new VoucherOrderHandler());
     }
 
     @PreDestroy
     public void shutdown() {
-        SECKILL_ORDER_EXECUTOR.shutdownNow();
+        running = false;
+        if (orderHandlerTask != null) {
+            orderHandlerTask.cancel(true);
+        }
+        seckillOrderExecutor.shutdownNow();
+        try {
+            if (!seckillOrderExecutor.awaitTermination(3, TimeUnit.SECONDS)) {
+                log.warn("Voucher order consumer did not stop within timeout.");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private void createConsumerGroupIfNecessary() {
@@ -154,7 +172,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
         @Override
         public void run() {
-            while (true) {
+            while (running && !Thread.currentThread().isInterrupted()) {
                 try {
                     // 1. Read one order request from the Redis Stream.
                     List<MapRecord<String, Object, Object>> list = stringRedisTemplate.opsForStream().read(
@@ -172,6 +190,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                     handleVoucherOrder(voucherOrder);
                     stringRedisTemplate.opsForStream().acknowledge(ORDER_STREAM_KEY, ORDER_GROUP, entries.getId());
                 } catch (Exception e) {
+                    if (isShutdownSignal(e)) {
+                        break;
+                    }
                     log.error("Order handle exception", e);
                     handlePendingList();
                 }
@@ -179,7 +200,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
 
         private void handlePendingList() {
-            while (true) {
+            while (running && !Thread.currentThread().isInterrupted()) {
                 try {
                     // 1. Recover one unacknowledged order request from the pending list.
                     List<MapRecord<String, Object, Object>> list = stringRedisTemplate.opsForStream().read(
@@ -197,6 +218,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                     handleVoucherOrder(voucherOrder);
                     stringRedisTemplate.opsForStream().acknowledge(ORDER_STREAM_KEY, ORDER_GROUP, entries.getId());
                 } catch (Exception e) {
+                    if (isShutdownSignal(e)) {
+                        break;
+                    }
                     log.error("Order handle exception", e);
                     try {
                         Thread.sleep(20);
@@ -208,6 +232,21 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                 }
             }
         }
+    }
+
+    private boolean isShutdownSignal(Exception e) {
+        if (!running || Thread.currentThread().isInterrupted()) {
+            return true;
+        }
+        Throwable current = e;
+        while (current != null) {
+            if (current instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private void handleVoucherOrder(VoucherOrder voucherOrder) {

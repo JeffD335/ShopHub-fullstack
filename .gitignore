@@ -2,6 +2,7 @@
 target/
 *.class
 *.log
+*.tsbuildinfo
 logs/
 
 # --- IntelliJ / VSCode ---
@@ -20,6 +21,8 @@ application-local.yaml
 # --- Node ---
 node_modules/
 dist/
+ShopHub-frontend/node_modules/
+ShopHub-frontend/dist/
 
 # --- Env ---
 .env
@@ -36,5 +39,5 @@ images/
 static/uploads/
 static/imgs/
 
-# --- Frontend/Nginx local artifacts out of scope for this backend-focused repo ---
+# --- Legacy Nginx local artifacts ---
 nginx-1.18.0/
