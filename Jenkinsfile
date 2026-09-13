@@ -9,5 +9,14 @@ pipeline {
         }
       }
     }
+
+    stage('Frontend Build') {
+      steps {
+        dir('ShopHub-frontend') {
+          sh 'npm ci'
+          sh 'npm run build'
+        }
+      }
+    }
   }
 }
