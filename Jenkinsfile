@@ -1,11 +1,28 @@
 pipeline {
-  agent any
+  agent {
+    label 'shophub-build'
+  }
+
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
+
+  environment {
+    CI = 'true'
+  }
 
   stages {
     stage('Backend Test') {
       steps {
         dir('ShopHub-backend') {
-          sh 'mvn -B test'
+          sh 'mvn -B clean verify'
+        }
+      }
+      post {
+        always {
+          junit allowEmptyResults: true, testResults: 'ShopHub-backend/target/surefire-reports/*.xml'
         }
       }
     }
