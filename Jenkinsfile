@@ -35,5 +35,11 @@ pipeline {
         }
       }
     }
+
+    stage('Archive Artifacts') {
+      steps {
+        archiveArtifacts artifacts: 'ShopHub-backend/target/*.jar, ShopHub-frontend/dist/**', fingerprint: true
+      }
+    }
   }
 }
